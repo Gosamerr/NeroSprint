@@ -110,9 +110,9 @@ public class MainTimer : MonoBehaviour
     {
         Debug.Log("Время вышло!");
 
-        coverpanel.active = true;
         score.active = false;
         point.active = false;
+        coverpanel.active = true;
         TimeOver?.Invoke();
         mainTimer.active = false;
 

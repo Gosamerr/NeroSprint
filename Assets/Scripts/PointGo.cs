@@ -113,7 +113,6 @@ public class PointGo : MonoBehaviour
                 ChangePosition();
                 times++;
                 score++;
-
             }
             else
             {

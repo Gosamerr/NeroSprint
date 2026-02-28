@@ -26,11 +26,13 @@ public class CoverTimer : MonoBehaviour
     private void OnDisable()
     {
         MainTimer.TimeOver -= SetScore;
+        CheckReacter.UserReact -= SetScore;
     }
 
     private void OnEnable()
     {
         MainTimer.TimeOver += SetScore;
+        CheckReacter.UserReact += SetScore;
     }
 
     private void SetScore()
@@ -52,10 +54,13 @@ public class CoverTimer : MonoBehaviour
         timer.transform.localScale = new Vector3(1.5f, 1.5f, 1.5f);
         timer.text = "1";
         yield return new WaitForSeconds(0.3f);
-        
-        score.active = true;
-        mainTimer.active = true;
-        point.active = true;
+
+        if (score != null)
+        {
+            score.active = true;
+            mainTimer.active = true;
+            point.active = true;
+        }
         start_test?.Invoke();
         
     }
