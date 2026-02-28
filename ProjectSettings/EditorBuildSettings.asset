@@ -12,7 +12,7 @@ EditorBuildSettings:
     path: Assets/Scenes/Register.unity
     guid: 9c1e5453686015e42925fc48eaf66d5f
   - enabled: 1
-    path: Assets/Scenes/MainMenuYdaliEtiSlova.unity
+    path: Assets/Scenes/MainMenu.unity
     guid: 9a1ec156ee1c4fc43bd3ad29befeea37
   - enabled: 1
     path: Assets/Scenes/Tests.unity
