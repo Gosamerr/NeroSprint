@@ -14,25 +14,25 @@ public class CoverPanel : MonoBehaviour
     private void OnEnable()
     {
         CoverTimer.start_test += HidePanel;
-        MainTimer.TimeOver += ShowPanel;
-        CheckReacter.UserReact += ShowPanel;
+        //MainTimer.TimeOver += ShowPanel;
+        //CheckReacter.UserReact += ShowPanel;
     }
 
     private void OnDisable()
     {
         CoverTimer.start_test -= HidePanel;
-        MainTimer.TimeOver -= ShowPanel;
-        CheckReacter.UserReact -= ShowPanel;
+        //MainTimer.TimeOver -= ShowPanel;
+        //CheckReacter.UserReact -= ShowPanel;
     }
     void HidePanel()
     {
         gameObject.SetActive(false);
     }
 
-    void ShowPanel()
-    {
-        gameObject.SetActive(true);
-    }
+    //void ShowPanel()
+    //{
+    //    gameObject.SetActive(true);
+    //}
     // Update is called once per frame
     void Update()
     {
