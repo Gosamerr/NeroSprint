@@ -58,38 +58,41 @@ public class DatabaseManager : MonoBehaviour
             connection.Open();
             using (var command = connection.CreateCommand())
             {
-                // Таблица tests
+                // Таблица tests (без изменений)
                 command.CommandText = @"
-                    CREATE TABLE tests (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        name TEXT NOT NULL
-                    );";
+                CREATE TABLE tests (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL
+                );";
                 command.ExecuteNonQuery();
 
-                // Таблица users
+                // Таблица users (без изменений)
                 command.CommandText = @"
-                    CREATE TABLE users (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        name TEXT NOT NULL,
-                        age INTEGER,
-                        email TEXT UNIQUE,
-                        password TEXT,
-                        registration_date DATETIME DEFAULT CURRENT_TIMESTAMP
-                    );";
+                CREATE TABLE users (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    age INTEGER,
+                    email TEXT UNIQUE,
+                    password TEXT,
+                    registration_date DATETIME DEFAULT CURRENT_TIMESTAMP
+                );";
                 command.ExecuteNonQuery();
 
-                // Таблица results
+                // Таблица test_results (новая структура)
                 command.CommandText = @"
-                    CREATE TABLE results (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        test_id INTEGER NOT NULL,
-                        user_id INTEGER NOT NULL,
-                        res_start_time DATETIME,
-                        res_end_time DATETIME,
-                        score REAL,
-                        FOREIGN KEY (test_id) REFERENCES tests (id) ON DELETE CASCADE,
-                        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-                    );";
+                CREATE TABLE test_results (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    test_id INTEGER NOT NULL,
+                    user_id INTEGER NOT NULL,
+                    avg_reaction_time_ms INTEGER,
+                    omission_errors INTEGER,
+                    commission_errors INTEGER,
+                    reaction_time_variability REAL,
+                    overall_accuracy REAL,
+                    completion_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (test_id) REFERENCES tests (id) ON DELETE CASCADE,
+                    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+                );";
                 command.ExecuteNonQuery();
             }
             connection.Close();
