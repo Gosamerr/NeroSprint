@@ -23,21 +23,17 @@ public class LoginUI : MonoBehaviour
         string email = emailInput.text.Trim();
         string password = passwordInput.text;
 
-        // Простая валидация
         if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password))
         {
             statusText.text = "Заполните все поля";
             return;
         }
 
-        // Проверяем в базе
-        bool isValid = DatabaseManager.Instance.ValidateUser(email, password);
-
-        if (isValid)
+        int userId = DatabaseManager.Instance.ValidateUser(email, password);
+        if (userId != -1)
         {
-            statusText.text = "Успешный вход!";
-            // Переход в главное меню
-            SceneManager.LoadScene(2); // индекс сцены MainMenu
+            DatabaseManager.CurrentUserId = userId;
+            SceneManager.LoadScene("MainMenu"); // или по индексу
         }
         else
         {

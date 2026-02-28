@@ -58,11 +58,11 @@ public class DatabaseManager : MonoBehaviour
             connection.Open();
             using (var command = connection.CreateCommand())
             {
-                // Таблица tests (без изменений)
+                // Таблица tests с уникальным name
                 command.CommandText = @"
                 CREATE TABLE tests (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    name TEXT NOT NULL
+                    name TEXT NOT NULL UNIQUE
                 );";
                 command.ExecuteNonQuery();
 
@@ -93,6 +93,14 @@ public class DatabaseManager : MonoBehaviour
                     FOREIGN KEY (test_id) REFERENCES tests (id) ON DELETE CASCADE,
                     FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
                 );";
+                command.ExecuteNonQuery();
+
+                // Добавляем три теста (если их ещё нет)
+                command.CommandText = @"
+                INSERT OR IGNORE INTO tests (name) VALUES 
+                ('SplitMatch'), 
+                ('PopTap'), 
+                ('HealthMeter');";
                 command.ExecuteNonQuery();
             }
             connection.Close();
@@ -172,7 +180,7 @@ public class DatabaseManager : MonoBehaviour
         return password;
     }
 
-    public bool ValidateUser(string email, string password)
+    public int ValidateUser(string email, string password)
     {
         try
         {
@@ -181,22 +189,19 @@ public class DatabaseManager : MonoBehaviour
                 connection.Open();
                 using (var command = connection.CreateCommand())
                 {
-                    command.CommandText = "SELECT password FROM users WHERE email = @email";
+                    command.CommandText = "SELECT id, password FROM users WHERE email = @email";
                     command.Parameters.AddWithValue("@email", email);
 
                     using (var reader = command.ExecuteReader())
                     {
                         if (reader.Read())
                         {
-                            string storedHash = reader.GetString(0);
-                            // Здесь нужно сравнить пароль с хешем
-                            // Пока используем прямое сравнение (для демонстрации)
-                            // В реальности: return BCrypt.Verify(password, storedHash);
-                            return password == storedHash; // временно, пока не внедрили хеширование
-                        }
-                        else
-                        {
-                            return false; // пользователь не найден
+                            int userId = reader.GetInt32(0);
+                            string storedPassword = reader.GetString(1); // пока без хеша
+                            if (password == storedPassword) // замените на BCrypt.Verify при необходимости
+                            {
+                                return userId;
+                            }
                         }
                     }
                 }
@@ -204,8 +209,72 @@ public class DatabaseManager : MonoBehaviour
         }
         catch (Exception e)
         {
-            Debug.LogError("Validation error: " + e.Message);
-            return false;
+            Debug.LogError("ValidateUser error: " + e.Message);
         }
+        return -1;
+    }
+
+    public static int CurrentUserId { get; set; } = -1;
+
+    public (string name, int age, string email) GetUserInfo(int userId)
+    {
+        try
+        {
+            using (var connection = new SqliteConnection("URI=file:" + dbPath))
+            {
+                connection.Open();
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = "SELECT name, age, email FROM users WHERE id = @id";
+                    command.Parameters.AddWithValue("@id", userId);
+                    using (var reader = command.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            string name = reader.GetString(0);
+                            int age = reader.GetInt32(1);
+                            string email = reader.GetString(2);
+                            return (name, age, email);
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogError("GetUserInfo error: " + e.Message);
+        }
+        return (null, 0, null);
+    }
+
+    public float GetBestResult(int userId, string testName)
+    {
+        try
+        {
+            using (var connection = new SqliteConnection("URI=file:" + dbPath))
+            {
+                connection.Open();
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = @"
+                    SELECT MAX(tr.overall_accuracy) 
+                    FROM test_results tr
+                    INNER JOIN tests t ON tr.test_id = t.id
+                    WHERE tr.user_id = @userId AND t.name = @testName";
+                    command.Parameters.AddWithValue("@userId", userId);
+                    command.Parameters.AddWithValue("@testName", testName);
+                    object result = command.ExecuteScalar();
+                    if (result != null && result != DBNull.Value)
+                    {
+                        return Convert.ToSingle(result);
+                    }
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"GetBestResult error for {testName}: " + e.Message);
+        }
+        return 0f; // если результатов нет
     }
 }
