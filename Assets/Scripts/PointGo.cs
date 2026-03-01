@@ -30,7 +30,6 @@ public class PointGo : MonoBehaviour
     [SerializeField] public int count_go_loose = 0;
     [SerializeField] public int count_no_go_loose = 0;
 
-    // Свойства для статистики
     public int SumImpulse => count_go_impulse + count_no_go_impulse;
     public int SumCorrect => SumImpulse - (count_go_loose + count_no_go_loose);
     public float ResultCount => SumImpulse > 0 ? (float)SumCorrect / SumImpulse : 0f;
@@ -53,16 +52,17 @@ public class PointGo : MonoBehaviour
     [SerializeField] Sprite fifth_go_impulse;
 
     [Header("Время реакции (мс)")]
-    [SerializeField] public List<float> reactionTimesMs = new List<float>(); // Массив времен реакции
-
-    // Для замера времени
+    [SerializeField] public List<float> reactionTimesMs = new List<float>();
     private Stopwatch reactionStopwatch;
     private bool isTimingReaction = false;
+
+    // Флаг, предотвращающий повторную инициализацию во время теста
+    private bool isTestActive = false;
 
     private void OnEnable()
     {
         CoverTimer.start_test += ActivatePoint;
-        MainTimer.TimeOver += OnTestFinished;   // Подписка на окончание теста
+        MainTimer.TimeOver += OnTestFinished;
     }
 
     private void OnDisable()
@@ -73,6 +73,10 @@ public class PointGo : MonoBehaviour
 
     void ActivatePoint()
     {
+        Debug.Log($"[{Time.time}] ActivatePoint called, isTestActive={isTestActive}");
+        if (isTestActive) return; // если тест уже идёт, игнорируем повторный вызов
+        isTestActive = true;
+
         reactionStopwatch = new Stopwatch();
         rt = GetComponent<Transform>();
         b = GetComponent<Button>();
@@ -87,12 +91,13 @@ public class PointGo : MonoBehaviour
         count_go_loose = 0;
         count_no_go_loose = 0;
         reactionTimesMs.Clear();
-        score = 0;  // Обнуляем счёт
+        score = 0;
     }
 
-    // Вызывается по окончании теста (событие TimeOver)
     private void OnTestFinished()
     {
+        Debug.Log($"[{Time.time}] OnTestFinished: current score = {score}");
+
         int totalGo = count_go_impulse;
         int omission = count_go_loose;
         int commission = count_no_go_loose;
@@ -109,17 +114,10 @@ public class PointGo : MonoBehaviour
 
         float overallAccuracy = totalGo > 0 ? (float)(totalGo - omission) / totalGo : 0f;
 
-        // ===== НОВАЯ СБАЛАНСИРОВАННАЯ ФОРМУЛА =====
-        float accuracyPoints = overallAccuracy * 800f;                     // максимум 800
-        float speedPoints = avgReactionTimeMs > 0
-            ? 200f * Mathf.Exp(-avgReactionTimeMs / 400f)                  // максимум 200
-            : 0f;
-        float penalty = omission * 10f + commission * 5f;                  // мягкие штрафы
-        float calculatedScore = accuracyPoints + speedPoints - penalty;
-        int finalScore = Mathf.RoundToInt(Mathf.Clamp(calculatedScore, 0f, 1000f));
+        // Используем накопленный игровой счёт
+        int finalScore = score;
 
-        Debug.Log($"Рейтинг: {finalScore} (точность: {overallAccuracy:F2}, " +
-                  $"время: {avgReactionTimeMs:F2} мс, пропуски: {omission})");
+        Debug.Log($"PopTap завершён: счёт={finalScore}, точность={overallAccuracy:F2}, время={avgReactionTimeMs:F2} мс, пропуски={omission}");
 
         if (DatabaseManager.Instance != null && DatabaseManager.CurrentUserId != -1)
         {
@@ -143,6 +141,8 @@ public class PointGo : MonoBehaviour
         {
             Debug.LogWarning("Пользователь не авторизован или DatabaseManager отсутствует");
         }
+
+        isTestActive = false; // тест завершён, можно снова активировать
     }
 
     void Update()
@@ -176,6 +176,8 @@ public class PointGo : MonoBehaviour
 
     void Move()
     {
+        Debug.Log($"[{Time.time}] Move started, current score={score}, times={times}");
+
         if (isTimingReaction && !flag_no_go_impulse)
         {
             reactionStopwatch.Stop();
@@ -196,6 +198,7 @@ public class PointGo : MonoBehaviour
                 ChangePosition();
                 times++;
                 score++;
+                Debug.Log($"[{Time.time}] score increased to {score}");
             }
             else
             {
@@ -203,6 +206,7 @@ public class PointGo : MonoBehaviour
                 score += 5;
                 AddScore?.Invoke(5);
                 ChangePosition();
+                Debug.Log($"[{Time.time}] score increased by 5 to {score}");
             }
         }
         else
@@ -211,6 +215,7 @@ public class PointGo : MonoBehaviour
             score -= 5;
             AddScore?.Invoke(-5);
             flag_no_go_impulse = false;
+            Debug.Log($"[{Time.time}] score decreased to {score}");
         }
     }
 
@@ -225,6 +230,8 @@ public class PointGo : MonoBehaviour
     {
         AddScore?.Invoke(-2);
         score = Mathf.Max(0, score - 1);
+        Debug.Log($"[{Time.time}] score decreased (disappear) to {score}");
+
         times = 0;
         count_go_loose++;
 
@@ -237,7 +244,6 @@ public class PointGo : MonoBehaviour
         }
 
         ChangePosition();
-
         idleTimer = 0f;
     }
 

@@ -1,55 +1,51 @@
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
 
 public class CoverTimer : MonoBehaviour
 {
-    // Start is called before the first frame update
-    TextMeshProUGUI timer;
+    private TextMeshProUGUI timer;
     public static event Action start_test;
 
-    [SerializeField]
-    private GameObject point;
-    [SerializeField]
-    private GameObject mainTimer;
-    [SerializeField]
-    private GameObject score;
+    [SerializeField] private GameObject point;
+    [SerializeField] private GameObject mainTimer;
+    [SerializeField] private GameObject score;
+
+    private bool testFinished = false; // флаг, что тест завершён
 
     void Start()
     {
         timer = GetComponent<TextMeshProUGUI>();
         StartCoroutine(ChangeNums());
     }
+
+    private void OnEnable()
+    {
+        MainTimer.TimeOver += SetScore;
+        CheckReacter.UserReact += SetScore;
+        // Если тест уже завершён, обновляем текст при активации панели
+        if (testFinished) SetScore();
+    }
+
     private void OnDisable()
     {
         MainTimer.TimeOver -= SetScore;
         CheckReacter.UserReact -= SetScore;
     }
 
-    private void OnEnable()
-    {
-        MainTimer.TimeOver += SetScore;
-        CheckReacter.UserReact += SetScore;
-    }
-
     private void SetScore()
     {
-        timer.text = Convert.ToString(PointGo.score);
+        testFinished = true;
+        Debug.Log($"[{Time.time}] SetScore: PointGo.score = {PointGo.score}");
+        timer.text = PointGo.score.ToString();
     }
-    void Update()
-    {
-        
-    }
-
 
     IEnumerator ChangeNums()
     {
         yield return new WaitForSeconds(0.9f);
         timer.text = "2";
-        timer.transform.localScale = new Vector3 (1.2f, 1.2f, 1.2f);
+        timer.transform.localScale = new Vector3(1.2f, 1.2f, 1.2f);
         yield return new WaitForSeconds(0.9f);
         timer.transform.localScale = new Vector3(1.5f, 1.5f, 1.5f);
         timer.text = "1";
@@ -57,11 +53,13 @@ public class CoverTimer : MonoBehaviour
 
         if (score != null)
         {
-            score.active = true;
-            mainTimer.active = true;
-            point.active = true;
+            score.SetActive(true);
+            mainTimer.SetActive(true);
+            point.SetActive(true);
         }
+
+        // Сбрасываем флаг перед началом нового теста
+        testFinished = false;
         start_test?.Invoke();
-        
     }
 }
