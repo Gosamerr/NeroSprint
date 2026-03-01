@@ -940,6 +940,7 @@ MonoBehaviour:
   reactionTimesMs: []
   testLight: {fileID: 1828118016}
   coverpanel: {fileID: 601626323}
+  testName: RidersTest
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

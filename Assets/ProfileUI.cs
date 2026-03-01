@@ -1,17 +1,23 @@
 using UnityEngine;
-using UnityEngine.UI;      // для Text и Button
+using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 
 public class ProfileUI : MonoBehaviour
 {
-    public Text nameText;               // отображение имени
-    public Text emailText;              // отображение email
+    [Header("Информация о пользователе")]
+    public Text nameText;
+    public Text emailText;
 
-    public Text bestSplitMatchText;      // лучший результат для SplitMatch
-    public Text bestPopTapText;          // лучший результат для PopTap
-    public Text bestHealthMeterText;     // лучший результат для HealthMeter
+    [Header("Зелёный цвет (RidersTest)")]
+    public Text greenTimeText;        // лучшее время реакции (мс)
+    public Text greenAccuracyText;    // лучшая точность (%)
 
-    public Button backButton;            // кнопка "Главное меню"
+    [Header("Точка быстрая (PopTap)")]
+    public Text popTimeText;          // лучшее время реакции (мс)
+    public Text popAccuracyText;      // лучшая точность (%)
+    public Text popScoreText;         // лучший счёт
+
+    public Button backButton;
 
     private void Start()
     {
@@ -21,26 +27,31 @@ public class ProfileUI : MonoBehaviour
 
     private void LoadProfile()
     {
-        // Если пользователь не вошёл — отправляем на логин
         if (DatabaseManager.CurrentUserId == -1)
         {
             SceneManager.LoadScene("Login");
             return;
         }
 
-        // Получаем информацию о пользователе
+        // Информация о пользователе
         var (name, age, email) = DatabaseManager.Instance.GetUserInfo(DatabaseManager.CurrentUserId);
         nameText.text = name;
         emailText.text = email;
 
-        // Получаем лучшие результаты (максимальная точность) для каждой игры
-        float splitMatchBest = DatabaseManager.Instance.GetBestResult(DatabaseManager.CurrentUserId, "SplitMatch");
-        float popTapBest = DatabaseManager.Instance.GetBestResult(DatabaseManager.CurrentUserId, "PopTap");
-        float healthMeterBest = DatabaseManager.Instance.GetBestResult(DatabaseManager.CurrentUserId, "HealthMeter");
+        // ---- Зелёный цвет (RidersTest) ----
+        float greenAccuracy = DatabaseManager.Instance.GetBestResult(DatabaseManager.CurrentUserId, "RidersTest");
+        float greenTime = DatabaseManager.Instance.GetBestReactionTime(DatabaseManager.CurrentUserId, "RidersTest");
 
-        // Отображаем в процентах (предполагаем, что overall_accuracy от 0 до 1)
-        bestSplitMatchText.text = (splitMatchBest * 100).ToString("F2") + "%";
-        bestPopTapText.text = (popTapBest * 100).ToString("F2") + "%";
-        bestHealthMeterText.text = (healthMeterBest * 100).ToString("F2") + "%";
+        greenAccuracyText.text = (greenAccuracy * 100).ToString("F2") + "%";
+        greenTimeText.text = greenTime > 0 ? greenTime.ToString("F0") + " мс" : "—";
+
+        // ---- Точка быстрая (PopTap) ----
+        float popAccuracy = DatabaseManager.Instance.GetBestResult(DatabaseManager.CurrentUserId, "PopTap");
+        float popTime = DatabaseManager.Instance.GetBestReactionTime(DatabaseManager.CurrentUserId, "PopTap");
+        int popScore = DatabaseManager.Instance.GetBestScore(DatabaseManager.CurrentUserId, "PopTap");
+
+        popAccuracyText.text = (popAccuracy * 100).ToString("F2") + "%";
+        popTimeText.text = popTime > 0 ? popTime.ToString("F0") + " мс" : "—";
+        popScoreText.text = popScore > 0 ? popScore.ToString() : "—";
     }
 }

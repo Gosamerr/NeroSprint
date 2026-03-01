@@ -11,7 +11,6 @@ public class DatabaseManager : MonoBehaviour
     private string dbPath;
     private const string dbName = "MyGameDB.sqlite";
 
-    // Синглтон для удобства доступа
     public static DatabaseManager Instance { get; private set; }
 
     private void Awake()
@@ -28,29 +27,25 @@ public class DatabaseManager : MonoBehaviour
         }
     }
 
-    // Инициализация: создаём папку и файл БД, если их нет, и создаём таблицы
     private void InitializeDatabase()
     {
-        // Определяем путь к базе данных в зависимости от платформы
 #if UNITY_EDITOR
-            dbPath = Path.Combine(Application.dataPath, dbName);
+        dbPath = Path.Combine(Application.dataPath, dbName);
 #elif UNITY_STANDALONE
-            dbPath = Path.Combine(Application.persistentDataPath, dbName);
+        dbPath = Path.Combine(Application.persistentDataPath, dbName);
 #endif
 
-        // Если файл базы ещё не существует – создадим таблицы
         if (!File.Exists(dbPath))
         {
             CreateDatabase();
         }
         else
         {
-            // Можно проверить структуру таблиц, но для простоты пропустим
             Debug.Log("Database already exists at: " + dbPath);
+            // При необходимости можно добавить проверку и миграцию существующей БД
         }
     }
 
-    // Создание таблиц по вашей схеме
     private void CreateDatabase()
     {
         using (var connection = new SqliteConnection("URI=file:" + dbPath))
@@ -58,7 +53,7 @@ public class DatabaseManager : MonoBehaviour
             connection.Open();
             using (var command = connection.CreateCommand())
             {
-                // Таблица tests с уникальным name
+                // Таблица tests
                 command.CommandText = @"
                 CREATE TABLE tests (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -66,7 +61,7 @@ public class DatabaseManager : MonoBehaviour
                 );";
                 command.ExecuteNonQuery();
 
-                // Таблица users (без изменений)
+                // Таблица users
                 command.CommandText = @"
                 CREATE TABLE users (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -78,7 +73,7 @@ public class DatabaseManager : MonoBehaviour
                 );";
                 command.ExecuteNonQuery();
 
-                // Таблица test_results (новая структура)
+                // Таблица test_results с добавленным столбцом score
                 command.CommandText = @"
                 CREATE TABLE test_results (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -89,18 +84,20 @@ public class DatabaseManager : MonoBehaviour
                     commission_errors INTEGER,
                     reaction_time_variability REAL,
                     overall_accuracy REAL,
+                    score REAL,  -- новый столбец для хранения результата теста
                     completion_date DATETIME DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (test_id) REFERENCES tests (id) ON DELETE CASCADE,
                     FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
                 );";
                 command.ExecuteNonQuery();
 
-                // Добавляем три теста (если их ещё нет)
+                // Добавляем тесты (включая RidersTest)
                 command.CommandText = @"
                 INSERT OR IGNORE INTO tests (name) VALUES 
                 ('SplitMatch'), 
                 ('PopTap'), 
-                ('HealthMeter');";
+                ('HealthMeter'),
+                ('RidersTest');";
                 command.ExecuteNonQuery();
             }
             connection.Close();
@@ -108,7 +105,6 @@ public class DatabaseManager : MonoBehaviour
         Debug.Log("Database created at: " + dbPath);
     }
 
-    // Метод для проверки соединения (опционально)
     public bool TestConnection()
     {
         try
@@ -127,11 +123,9 @@ public class DatabaseManager : MonoBehaviour
         }
     }
 
-    // Регистрация нового пользователя
     public bool RegisterUser(string name, int age, string email, string password)
     {
-        // Хеширование пароля (обсудим позже)
-        string hashedPassword = HashPassword(password);
+        string hashedPassword = HashPassword(password); // В реальном проекте используйте безопасное хеширование
 
         try
         {
@@ -156,7 +150,6 @@ public class DatabaseManager : MonoBehaviour
         }
         catch (SqliteException e)
         {
-            // Ошибка SQLite, например нарушение уникальности email
             Debug.LogError("SQLite error: " + e.Message);
             return false;
         }
@@ -167,16 +160,9 @@ public class DatabaseManager : MonoBehaviour
         }
     }
 
-    // Простейшее хеширование пароля (для примера используем небезопасный GetHashCode,
-    // в реальном проекте используйте BCrypt или как минимум SHA256 с солью)
     private string HashPassword(string password)
     {
-        // ВАЖНО: Это только для демонстрации! Никогда не храните пароли в открытом виде.
-        // Рекомендуется использовать BCrypt.Net или аналоги.
-        // Пример с BCrypt (нужно установить пакет):
-        // return BCrypt.Net.BCrypt.HashPassword(password);
-
-        // Временная заглушка (небезопасно!)
+        // Временная заглушка (небезопасно!). Замените на BCrypt или SHA256 с солью.
         return password;
     }
 
@@ -197,8 +183,8 @@ public class DatabaseManager : MonoBehaviour
                         if (reader.Read())
                         {
                             int userId = reader.GetInt32(0);
-                            string storedPassword = reader.GetString(1); // пока без хеша
-                            if (password == storedPassword) // замените на BCrypt.Verify при необходимости
+                            string storedPassword = reader.GetString(1);
+                            if (password == storedPassword) // Сравнивайте хеши!
                             {
                                 return userId;
                             }
@@ -275,6 +261,128 @@ public class DatabaseManager : MonoBehaviour
         {
             Debug.LogError($"GetBestResult error for {testName}: " + e.Message);
         }
-        return 0f; // если результатов нет
+        return 0f;
+    }
+
+    // Обновлённый метод сохранения результата с параметром score
+    public bool SaveTestResult(int userId, string testName,
+                               float avgReactionTimeMs, int omissionErrors,
+                               int commissionErrors, float reactionTimeVariability,
+                               float overallAccuracy, float score)
+    {
+        try
+        {
+            using (var connection = new SqliteConnection("URI=file:" + dbPath))
+            {
+                connection.Open();
+
+                // Получаем ID теста по имени
+                int testId;
+                using (var cmd = connection.CreateCommand())
+                {
+                    cmd.CommandText = "SELECT id FROM tests WHERE name = @testName";
+                    cmd.Parameters.AddWithValue("@testName", testName);
+                    object result = cmd.ExecuteScalar();
+                    if (result == null)
+                    {
+                        Debug.LogError($"Тест с именем {testName} не найден в БД");
+                        return false;
+                    }
+                    testId = Convert.ToInt32(result);
+                }
+
+                // Вставляем результат со score
+                using (var cmd = connection.CreateCommand())
+                {
+                    cmd.CommandText = @"
+                    INSERT INTO test_results 
+                        (test_id, user_id, avg_reaction_time_ms, omission_errors, 
+                         commission_errors, reaction_time_variability, overall_accuracy, score)
+                    VALUES 
+                        (@testId, @userId, @avgTime, @omission, @commission, @variability, @accuracy, @score);";
+
+                    cmd.Parameters.AddWithValue("@testId", testId);
+                    cmd.Parameters.AddWithValue("@userId", userId);
+                    cmd.Parameters.AddWithValue("@avgTime", avgReactionTimeMs);
+                    cmd.Parameters.AddWithValue("@omission", omissionErrors);
+                    cmd.Parameters.AddWithValue("@commission", commissionErrors);
+                    cmd.Parameters.AddWithValue("@variability", reactionTimeVariability);
+                    cmd.Parameters.AddWithValue("@accuracy", overallAccuracy);
+                    cmd.Parameters.AddWithValue("@score", score);
+
+                    int rows = cmd.ExecuteNonQuery();
+                    return rows > 0;
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogError("SaveTestResult error: " + e.Message);
+            return false;
+        }
+    }
+
+    // Получить лучшее время реакции (минимальное)
+    public float GetBestReactionTime(int userId, string testName)
+    {
+        try
+        {
+            using (var connection = new SqliteConnection("URI=file:" + dbPath))
+            {
+                connection.Open();
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = @"
+                SELECT MIN(tr.avg_reaction_time_ms)
+                FROM test_results tr
+                INNER JOIN tests t ON tr.test_id = t.id
+                WHERE tr.user_id = @userId AND t.name = @testName";
+                    command.Parameters.AddWithValue("@userId", userId);
+                    command.Parameters.AddWithValue("@testName", testName);
+                    object result = command.ExecuteScalar();
+                    if (result != null && result != DBNull.Value)
+                    {
+                        return Convert.ToSingle(result);
+                    }
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"GetBestReactionTime error for {testName}: " + e.Message);
+        }
+        return 0f;
+    }
+
+    // Получить лучший счёт (максимальный)
+    public int GetBestScore(int userId, string testName)
+    {
+        try
+        {
+            using (var connection = new SqliteConnection("URI=file:" + dbPath))
+            {
+                connection.Open();
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = @"
+                SELECT MAX(tr.score)
+                FROM test_results tr
+                INNER JOIN tests t ON tr.test_id = t.id
+                WHERE tr.user_id = @userId AND t.name = @testName";
+                    command.Parameters.AddWithValue("@userId", userId);
+                    command.Parameters.AddWithValue("@testName", testName);
+                    object result = command.ExecuteScalar();
+                    if (result != null && result != DBNull.Value)
+                    {
+                        return Convert.ToInt32(result);
+                    }
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"GetBestScore error for {testName}: " + e.Message);
+        }
+        return 0;
     }
 }

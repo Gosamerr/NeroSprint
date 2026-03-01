@@ -110,12 +110,14 @@ public class MainTimer : MonoBehaviour
     {
         Debug.Log("Время вышло!");
 
+        // Сначала вызываем событие, пока PointGo ещё активен
+        TimeOver?.Invoke();
+
+        // Затем деактивируем
         score.active = false;
         point.active = false;
         coverpanel.active = true;
-        TimeOver?.Invoke();
         mainTimer.active = false;
-
     }
 
     public void StopTimer()
