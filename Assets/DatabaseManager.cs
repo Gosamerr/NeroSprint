@@ -384,5 +384,107 @@ public class DatabaseManager : MonoBehaviour
             Debug.LogError($"GetBestScore error for {testName}: " + e.Message);
         }
         return 0;
+
+
+    }
+
+    // Добавьте эти методы в существующий класс DatabaseManager
+
+    // Получить данные для графика за последний месяц
+    public List<TestResultData> GetTestResultsForLastMonth(int userId, string testName)
+    {
+        List<TestResultData> results = new List<TestResultData>();
+
+        try
+        {
+            using (var connection = new SqliteConnection("URI=file:" + dbPath))
+            {
+                connection.Open();
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = @"
+                SELECT tr.completion_date, tr.avg_reaction_time_ms, tr.overall_accuracy, tr.score
+                FROM test_results tr
+                INNER JOIN tests t ON tr.test_id = t.id
+                WHERE tr.user_id = @userId 
+                AND t.name = @testName
+                AND tr.completion_date >= datetime('now', '-30 days')
+                ORDER BY tr.completion_date ASC;";
+
+                    command.Parameters.AddWithValue("@userId", userId);
+                    command.Parameters.AddWithValue("@testName", testName);
+
+                    using (var reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            TestResultData data = new TestResultData
+                            {
+                                completionDate = reader.GetDateTime(0),
+                                avgReactionTimeMs = reader.IsDBNull(1) ? 0 : reader.GetFloat(1),
+                                overallAccuracy = reader.IsDBNull(2) ? 0 : reader.GetFloat(2),
+                                score = reader.IsDBNull(3) ? 0 : reader.GetFloat(3)
+                            };
+                            results.Add(data);
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"GetTestResultsForLastMonth error: {e.Message}");
+        }
+
+        return results;
+    }
+
+    // Получить список доступных тестов для пользователя
+    public List<string> GetUserTests(int userId)
+    {
+        List<string> tests = new List<string>();
+
+        try
+        {
+            using (var connection = new SqliteConnection("URI=file:" + dbPath))
+            {
+                connection.Open();
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = @"
+                SELECT DISTINCT t.name
+                FROM tests t
+                INNER JOIN test_results tr ON t.id = tr.test_id
+                WHERE tr.user_id = @userId
+                ORDER BY t.name;";
+
+                    command.Parameters.AddWithValue("@userId", userId);
+
+                    using (var reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            tests.Add(reader.GetString(0));
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"GetUserTests error: {e.Message}");
+        }
+
+        return tests;
+    }
+
+    // Вспомогательный класс для данных
+    [System.Serializable]
+    public class TestResultData
+    {
+        public DateTime completionDate;
+        public float avgReactionTimeMs;
+        public float overallAccuracy;
+        public float score;
     }
 }

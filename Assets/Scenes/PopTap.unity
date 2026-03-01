@@ -564,7 +564,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: aca56f364ce087146b217b4ed7b77cdc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  timeInSeconds: 60
+  timeInSeconds: 30
   timerSlider: {fileID: 521097204}
   smoothDecrease: 1
   point: {fileID: 1446001395}

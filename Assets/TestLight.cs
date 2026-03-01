@@ -15,6 +15,7 @@ public class TestLight : MonoBehaviour
     [SerializeField] Color[] colors = new Color[] { Color.yellow, Color.blue, Color.grey, Color.magenta };
     [SerializeField] public int timesChangecolor;
     [SerializeField] Color[] colorsLight;
+    [SerializeField] Color colorGreen;
 
     public static event Action GreenStart;
     public static event Action TestCompleted; // событие окончания теста
@@ -41,10 +42,10 @@ public class TestLight : MonoBehaviour
 
         for (int i = 0; i < colorsLight.Length; i++)
         {
-            int color = Random.Range(0, 4);
+            int color = Random.Range(0, 3);
             colorsLight[i] = colors[color];
         }
-        colorsLight[colorsLight.Length - 1] = Color.green;
+        colorsLight[colorsLight.Length - 1] = colorGreen;
 
         StartCoroutine(ChangeColorsLigth());
     }
@@ -61,7 +62,7 @@ public class TestLight : MonoBehaviour
                 j.color = colorsLight[i];
             }
 
-            if (colorsLight[i] == Color.green)
+            if (colorsLight[i] == colorGreen)
             {
                 GreenStart?.Invoke();
                 // Даём игроку 2 секунды на реакцию

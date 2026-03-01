@@ -18,10 +18,13 @@ public class ProfileUI : MonoBehaviour
     public Text popScoreText;         // лучший счёт
 
     public Button backButton;
+    public Button grafButton;
+
 
     private void Start()
     {
         backButton.onClick.AddListener(() => SceneManager.LoadScene("MainMenu"));
+        grafButton.onClick.AddListener(() => SceneManager.LoadScene("Graf"));
         LoadProfile();
     }
 
